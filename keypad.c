@@ -41,15 +41,22 @@ void KeypadInitialize() {
     TRIS_ROW3 = 0; TRIS_COL3 = 1;
     TRIS_ROW4 = 0;
 
+    AD1CON3bits.ADCS0 = 1;
+    AD1CON3bits.ADCS1 = 1;
+
  
     //set cn2,cn3 and cn0 pullup resister off and the interupt on
-    //set cn4,cn5,cn6,cn7 pullup resister on
-    CNPU1 = 0x00F0;
+    CNPU1 = 0x000D;
     
     CNEN1 = 0x000D;
 
-    IFS1bits.CNIF = 0;
+    IFS1bits.CNIF = 23;
     IEC1bits.CNIE = 1;
+
+    ROW1 = 0;
+    ROW2 = 0;
+    ROW3 = 0;
+    ROW4 = 0;
 
 }
 
@@ -79,75 +86,68 @@ char KeypadScan() {
 
         while ( row <= 5){
             if (row == 5){
-                ROW1 = 1;
-                ROW2 = 1;
-                ROW3 = 1;
-                ROW4 = 1;
-                if (COL1&&COL2){
-                    col = 0;
-                } else if (COL1&&COL3){
-                    col = 0;
-                } else if (COL2&&COL3){
-                    col = 0;
-                }
-                while( COL1&&COL2&&COL3);
-            } else if (row == 1){
+                ROW1 = 0;
                 ROW2 = 0;
                 ROW3 = 0;
                 ROW4 = 0;
-                ROW1 = 1;
-                  if (COL1&&!COL2&&!COL3){
-                    col = 1;
-                } else if (!COL1&&COL2&&!COL3) {
-                    col = 2;
-                } else if (!COL1&&!COL2&&COL3) {
-                    col = 3;
-                } else {
+                if (COL1==0&&COL2==0){
                     col = 0;
+                } else if (COL1==0&&COL3==0){
+                    col = 0;
+                } else if (COL2==0&&COL3==0){
+                    col = 0;
+                }
+                while( COL1==0&&COL2==0&&COL3==0);
+            } else if (row == 1){
+                ROW2 = 1;
+                ROW3 = 1;
+                ROW4 = 1;
+                ROW1 = 0;
+                 if (!COL1&&COL2&&COL3){
+                    col = 1;
+                } else if (COL1&&!COL2&&COL3) {
+                    col = 2;
+                } else if (COL1&&COL2&&!COL3) {
+                    col = 3;
                 }
             } else if (row == 2){
-                ROW1 = 0;
-                ROW3 = 0;
-                ROW4 = 0;
-                ROW2 = 1;
-                if (COL1&&!COL2&&!COL3){
+                ROW1 = 1;
+                ROW3 = 1;
+                ROW4 = 1;
+                ROW2 = 0;
+                if (!COL1&&COL2&&COL3){
                     col = 1;
-                } else if (!COL1&&COL2&&!COL3) {
+                } else if (COL1&&!COL2&&COL3) {
                     col = 2;
-                } else if (!COL1&&!COL2&&COL3) {
+                } else if (COL1&&COL2&&!COL3) {
                     col = 3;
-                } else {
-                    col = 0;
                 }
             } else if (row == 3){
-                ROW1 = 0;
-                ROW2 = 0;
-                ROW4 = 0;
-                ROW3 = 1;
-                if (COL1&&!COL2&&!COL3){
+                ROW1 = 1;
+                ROW2 = 1;
+                ROW4 = 1;
+                ROW3 = 0;
+                 if (!COL1&&COL2&&COL3){
                     col = 1;
-                } else if (!COL1&&COL2&&!COL3) {
+                } else if (COL1&&!COL2&&COL3) {
                     col = 2;
-                } else if (!COL1&&!COL2&&COL3) {
+                } else if (COL1&&COL2&&!COL3) {
                     col = 3;
-                } else {
-                    col = 0;
                 }
             } else if (row == 4) {
-                ROW1 = 0;
-                ROW2 = 0;
-                ROW3 = 0;
-                ROW4 = 1;
-                if (COL1&&!COL2&&!COL3){
+                ROW1 = 1;
+                ROW2 = 1;
+                ROW3 = 1;
+                ROW4 = 0;
+                if (!COL1&&COL2&&COL3){
                     col = 1;
-                } else if (!COL1&&COL2&&!COL3) {
+                } else if (COL1&&!COL2&&COL3) {
                     col = 2;
-                } else if (!COL1&&!COL2&&COL3) {
+                } else if (COL1&&COL2&&!COL3) {
                     col = 3;
-                } else {
-                    col = 0;
                 }
             }
+            row++;
         }
 
         ROW1 = 0;

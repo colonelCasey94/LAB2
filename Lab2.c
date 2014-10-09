@@ -44,6 +44,7 @@ int main(void)
 	
 	LCDInitialize();
 	KeypadInitialize();
+        LCDPrintString("hello");
 	
 	// TODO: Initialize scanKeypad variable.
 	
@@ -83,6 +84,9 @@ void __attribute__((interrupt)) _CNInterrupt(void)
 	
 	// TODO: Detect if *any* key of the keypad is *pressed*, and update scanKeypad
 	// variable to indicate keypad scanning process must be executed.
+       if( LATAbits.LATA0 == 0 || LATAbits.LATA1 ==0 || LATAbits.LATA4 == 0 ){
+           scanKeypad = 1;
+       }
 }
 
 // ******************************************************************************************* //
