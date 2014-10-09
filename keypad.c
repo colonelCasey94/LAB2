@@ -27,6 +27,9 @@
 
 
 //******************************************************************************************** //
+
+volatile int col = 0;
+
 void KeypadInitialize() {
 	
 	// TODO: Configure IOs and Change Notificaiton interrupt for keypad scanning. This 
@@ -38,38 +41,139 @@ void KeypadInitialize() {
     TRIS_ROW3 = 0; TRIS_COL3 = 1;
     TRIS_ROW4 = 0;
 
-    IFS1bits.CNIF = 0;
-    IEC1bits.CNIE = 1;
+ 
     //set cn2,cn3 and cn0 pullup resister off and the interupt on
-    CNPU1 = 0x0000;
+    //set cn4,cn5,cn6,cn7 pullup resister on
+    CNPU1 = 0x00F0;
     
     CNEN1 = 0x000D;
+
+    IFS1bits.CNIF = 0;
+    IEC1bits.CNIE = 1;
 
 }
 
 // ******************************************************************************************* //
 
 char KeypadScan() {
-	char key = -1;
-	
-	
-	// TODO: Implement the keypad scanning procedure to detect if exactly one button of the 
+
+    // TODO: Implement the keypad scanning procedure to detect if exactly one button of the
 	// keypad is pressed. The function should return:
 	//
 	//      -1         : Return -1 if no keys are pressed.
-	//      '0' - '9'  : Return the ASCII character '0' to '9' if one of the 
+	//      '0' - '9'  : Return the ASCII character '0' to '9' if one of the
 	//                   numeric (0 - 9) keys are pressed.
-	//      '#'        : Return the ASCII character '#' if the # key is pressed. 
-	//      '*'        : Return the ASCII character '*' if the * key is pressed. 
+	//      '#'        : Return the ASCII character '#' if the # key is pressed.
+	//      '*'        : Return the ASCII character '*' if the * key is pressed.
 	//       -1        : Return -1 if more than one key is pressed simultaneously.
-	// Notes: 
-	//        1. Only valid inputs should be allowed by the user such that all invalid inputs 
+	// Notes:
+	//        1. Only valid inputs should be allowed by the user such that all invalid inputs
 	//           are ignored until a valid input is detected.
 	//        2. The user must release all keys of the keypad before the following key press
-	//           is processed. This is to prevent invalid keypress from being processed if the 
+	//           is processed. This is to prevent invalid keypress from being processed if the
 	//           users presses multiple keys simultaneously.
-	//
-	return key;
+
+	char key = -1;
+
+        int row = 1;
+
+        while ( row <= 5){
+            if (row == 5){
+                ROW1 = 1;
+                ROW2 = 1;
+                ROW3 = 1;
+                ROW4 = 1;
+                if (COL1&&COL2){
+                    col = 0;
+                } else if (COL1&&COL3){
+                    col = 0;
+                } else if (COL2&&COL3){
+                    col = 0;
+                }
+                while( COL1&&COL2&&COL3);
+            } else if (row == 1){
+                ROW2 = 0;
+                ROW3 = 0;
+                ROW4 = 0;
+                ROW1 = 1;
+                  if (COL1&&!COL2&&!COL3){
+                    col = 1;
+                } else if (!COL1&&COL2&&!COL3) {
+                    col = 2;
+                } else if (!COL1&&!COL2&&COL3) {
+                    col = 3;
+                } else {
+                    col = 0;
+                }
+            } else if (row == 2){
+                ROW1 = 0;
+                ROW3 = 0;
+                ROW4 = 0;
+                ROW2 = 1;
+                if (COL1&&!COL2&&!COL3){
+                    col = 1;
+                } else if (!COL1&&COL2&&!COL3) {
+                    col = 2;
+                } else if (!COL1&&!COL2&&COL3) {
+                    col = 3;
+                } else {
+                    col = 0;
+                }
+            } else if (row == 3){
+                ROW1 = 0;
+                ROW2 = 0;
+                ROW4 = 0;
+                ROW3 = 1;
+                if (COL1&&!COL2&&!COL3){
+                    col = 1;
+                } else if (!COL1&&COL2&&!COL3) {
+                    col = 2;
+                } else if (!COL1&&!COL2&&COL3) {
+                    col = 3;
+                } else {
+                    col = 0;
+                }
+            } else if (row == 4) {
+                ROW1 = 0;
+                ROW2 = 0;
+                ROW3 = 0;
+                ROW4 = 1;
+                if (COL1&&!COL2&&!COL3){
+                    col = 1;
+                } else if (!COL1&&COL2&&!COL3) {
+                    col = 2;
+                } else if (!COL1&&!COL2&&COL3) {
+                    col = 3;
+                } else {
+                    col = 0;
+                }
+            }
+        }
+
+        ROW1 = 0;
+        ROW2 = 0;
+        ROW3 = 0;
+        ROW4 = 0;
+
+        if (col != 0){
+            if (row = 4){
+                if (col = 1){
+                    key = '*';
+                }else if (col == 2){
+                    key = '0';
+                } else if (col == 3){
+                    key = '#';
+                } else {
+                    return -1;
+                }
+            } else {
+                key = '1'+col-1+(row*3);
+            }
+        }
+	
+	
+
+       	return key;
 }
 
 // ******************************************************************************************* //
