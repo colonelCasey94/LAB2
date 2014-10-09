@@ -5,6 +5,28 @@
 
 // ******************************************************************************************* //
 
+// set up conections for inverse multiplexing
+#define ROW1 LATBbits.LATB0
+#define ROW2 LATBbits.LATB1
+#define ROW3 LATBbits.LATB2
+#define ROW4 LATBbits.LATB3
+
+#define COL1 PORTAbits.RA0
+#define COL2 PORTAbits.RA1
+#define COL3 PORTAbits.RA4
+
+// TRIS Register mapping for the keypad signals
+#define TRIS_ROW1 TRISBbits.TRISB0
+#define TRIS_ROW2 TRISBbits.TRISB1
+#define TRIS_ROW3 TRISBbits.TRISB2
+#define TRIS_ROW4 TRISBbits.TRISB3
+
+#define TRIS_COL1 TRISAbits.TRISA0
+#define TRIS_COL2 TRISAbits.TRISA1
+#define TRIS_COL3 TRISAbits.TRISA4
+
+
+//******************************************************************************************** //
 void KeypadInitialize() {
 	
 	// TODO: Configure IOs and Change Notificaiton interrupt for keypad scanning. This 
