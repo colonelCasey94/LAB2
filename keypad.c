@@ -32,6 +32,19 @@ void KeypadInitialize() {
 	// TODO: Configure IOs and Change Notificaiton interrupt for keypad scanning. This 
 	// configuration should ensure that if any key is pressed, a change notification interrupt 
 	// will be generated.
+
+    TRIS_ROW1 = 0; TRIS_COL1 = 1;
+    TRIS_ROW2 = 0; TRIS_COL2 = 1;
+    TRIS_ROW3 = 0; TRIS_COL3 = 1;
+    TRIS_ROW4 = 0;
+
+    IFS1bits.CNIF = 0;
+    IEC1bits.CNIE = 1;
+    //set cn2,cn3 and cn0 pullup resister off and the interupt on
+    CNPU1 = 0x0000;
+    
+    CNEN1 = 0x000D;
+
 }
 
 // ******************************************************************************************* //
