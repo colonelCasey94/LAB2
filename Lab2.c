@@ -27,11 +27,16 @@ _CONFIG2( IESO_OFF & SOSCSEL_SOSC & WUTSEL_LEG & FNOSC_PRIPLL & FCKSM_CSDCMD & O
 		 IOL1WAY_OFF & I2C1SEL_PRI & POSCMOD_XT )
 
 // ******************************************************************************************* //
+#define XTFREQ          7372800         	  // On-board Crystal frequency
+#define PLLMODE         4               	  // On-chip PLL setting (Fosc)
+#define FCY             (XTFREQ*PLLMODE)/2    // Instruction Cycle Frequency (Fosc/2)
+
 
 // Varible used to indicate that the current configuration of the keypad has been changed,
 // and the KeypadScan() function needs to be called.
 
 volatile char scanKeypad;
+volatile int clock_time = 0;
 
 // ******************************************************************************************* //
 
@@ -44,6 +49,20 @@ int main(void)
 	
 	LCDInitialize();
 	KeypadInitialize();
+
+        TMR1 = 0;
+        // Set Timer 1's period value regsiter to value for 1s.
+        //14745600/256 = 57600
+        //1 s * 57600 = 57600
+        PR1 = 57600;
+        // Setup Timer 1 control register (T1CON) to:
+ 	//     TON           = 0     (start timer)
+	//     TCKPS1:TCKPS2 = 11    (set timer prescaler to 1:256)
+	//     TCS           = 0     (Fosc/2)
+	T1CON = 0x8030;
+        IFS0bits.T1IF = 0;
+        IEC0bits.T1IE = 1;
+
 	
 	// TODO: Initialize scanKeypad variable.
 	
@@ -83,6 +102,16 @@ void __attribute__((interrupt)) _CNInterrupt(void)
 	
 	// TODO: Detect if *any* key of the keypad is *pressed*, and update scanKeypad
 	// variable to indicate keypad scanning process must be executed.
+}
+
+void __attribute__((interrupt,auto_psv)) _T1Interrupt(void)
+{
+	// Clear Timer 1 interrupt flag to allow another Timer 1 interrupt to occur.
+	IFS0bits.T1IF = 0;
+
+        clock_time = clock_time + 1;
+
+
 }
 
 // ******************************************************************************************* //
