@@ -6,7 +6,14 @@
 #include "p24fj64ga002.h"
 #include <stdio.h>
 #include "lcd.h"
+#include "keypad.h"
 
+#define XTFREQ          7372800         	  // On-board Crystal frequency
+#define PLLMODE         4               	  // On-chip PLL setting (Fosc)
+#define FCY             (XTFREQ*PLLMODE)/2    // Instruction Cycle Frequency (Fosc/2)
+
+#define BAUDRATE         115200
+#define BRGVAL          ((FCY/BAUDRATE)/16)-1
 // ******************************************************************************************* //
 // Configuration bits for CONFIG1 settings. 
 //
@@ -37,14 +44,28 @@ volatile char scanKeypad;
 
 int main(void)
 {
-	char key;
+
+        RPINR18bits.U1RXR = 9;
+    RPOR4bits.RP8R = 3;
+        U1BRG  = BRGVAL;
+    U1MODE = 0x8000;
+        U1STA  = 0x0440;
+    IFS0bits.U1RXIF = 0;
+
+
+
+        printf("working  ");
+
+
+	char Key1;
 	
 	// TODO: Initialize and configure IOs, LCD (using your code from Lab 1), 
 	// UART (if desired for debugging), and any other configurations that are needed.
 	
-	LCDInitialize();
+	//LCDInitialize();
 	KeypadInitialize();
-        LCDPrintString("hello");
+        printf("initialized\n");
+       // LCDPrintString("hello");
 	
 	// TODO: Initialize scanKeypad variable.
 	
@@ -53,14 +74,14 @@ int main(void)
 		// TODO: Once you create the correct keypad driver (Part 1 of the lab assignment), write
 		// the C program that use both the keypad and LCD drivers to implement the 4-digit password system.
 		
-		if( scanKeypad == 1 ) {
-			key = KeypadScan();
-			if( key != -1 ) {
-				LCDMoveCursor(0,0);		
-				LCDPrintChar(key);
+		//if( scanKeypad == 1 ) {
+			Key1 = KeypadScan();
+			if( Key1 != -1 ) {
+				//LCDMoveCursor(0,0);
+				printf("%c",Key1);
 			}
 			scanKeypad = 0;
-		}		
+		//}
 	}
 	return 0;
 }
@@ -84,9 +105,9 @@ void __attribute__((interrupt)) _CNInterrupt(void)
 	
 	// TODO: Detect if *any* key of the keypad is *pressed*, and update scanKeypad
 	// variable to indicate keypad scanning process must be executed.
-       if( LATAbits.LATA0 == 0 || LATAbits.LATA1 ==0 || LATAbits.LATA4 == 0 ){
-           scanKeypad = 1;
-       }
+//       if( LATAbits.LATA0 == 0 || LATAbits.LATA1 ==0 || LATAbits.LATA4 == 0 ){
+//           scanKeypad = 1;
+//       }
 }
 
 // ******************************************************************************************* //

@@ -13,7 +13,7 @@
 
 #define COL1 PORTAbits.RA0
 #define COL2 PORTAbits.RA1
-#define COL3 PORTAbits.RA4
+#define COL3 PORTBbits.RB5
 
 // TRIS Register mapping for the keypad signals
 #define TRIS_ROW1 TRISBbits.TRISB0
@@ -23,7 +23,11 @@
 
 #define TRIS_COL1 TRISAbits.TRISA0
 #define TRIS_COL2 TRISAbits.TRISA1
-#define TRIS_COL3 TRISAbits.TRISA4
+#define TRIS_COL3 TRISBbits.TRISB5
+
+
+#define HIGH 1
+#define LOW 0
 
 
 //******************************************************************************************** //
@@ -31,38 +35,46 @@
 volatile int col = 0;
 
 void KeypadInitialize() {
-	
-	// TODO: Configure IOs and Change Notificaiton interrupt for keypad scanning. This 
-	// configuration should ensure that if any key is pressed, a change notification interrupt 
-	// will be generated.
 
-    TRIS_ROW1 = 0; TRIS_COL1 = 1;
-    TRIS_ROW2 = 0; TRIS_COL2 = 1;
-    TRIS_ROW3 = 0; TRIS_COL3 = 1;
+	// TODO: Configure IOs and Change Notificaiton interrupt for keypad scanning. This
+	// configuration should ensure that if any key is pressed, a change notification interrupt
+	// will be generated.
+//  outputs         inputs
+    TRIS_ROW1 = 0;  TRIS_COL1 = 1;
+    TRIS_ROW2 = 0;  TRIS_COL2 = 1;
+    TRIS_ROW3 = 0;  TRIS_COL3 = 1;
     TRIS_ROW4 = 0;
 
-    AD1CON3bits.ADCS0 = 1;
-    AD1CON3bits.ADCS1 = 1;
 
- 
-    //set cn2,cn3 and cn0 pullup resister off and the interupt on
-    CNPU1 = 0x000D;
-    
-    CNEN1 = 0x000D;
-
-    IFS1bits.CNIF = 23;
+//  input set to digital
+    AD1PCFGbits.PCFG0 = 1;
+    AD1PCFGbits.PCFG1 = 1;
+//  output pull up resistors
+    CNPU1bits.CN2PUE = 1;
+    CNPU1bits.CN3PUE = 1;
+    CNPU1bits.CN0PUE = 1;
+// configure open drain
+    ODCBbits.ODB0 = 1;
+    ODCBbits.ODB1 = 1;
+    ODCBbits.ODB2 = 1;
+    ODCBbits.ODB3 = 1;
+//  input change notification
+    CNEN1bits.CN2IE = 1;
+    CNEN1bits.CN3IE = 1;
+    CNEN1bits.CN0IE = 1;
+//  turn on change notifications after setting flag to low
+    IFS1bits.CNIF = 0;
     IEC1bits.CNIE = 1;
 
-    ROW1 = 0;
-    ROW2 = 0;
-    ROW3 = 0;
-    ROW4 = 0;
 
+    ROW1 = LOW; ROW3 = LOW;
+    ROW2 = LOW; ROW4 = LOW;
 }
 
 // ******************************************************************************************* //
 
 char KeypadScan() {
+
 
     // TODO: Implement the keypad scanning procedure to detect if exactly one button of the
 	// keypad is pressed. The function should return:
@@ -80,100 +92,25 @@ char KeypadScan() {
 	//           is processed. This is to prevent invalid keypress from being processed if the
 	//           users presses multiple keys simultaneously.
 
-	char key = -1;
+	char key = -1; int count = 0;
 
-        int row = 1;
+        ROW1 = HIGH; ROW3 = HIGH;
+        ROW2 = HIGH; ROW4 = HIGH;
 
-        while ( row <= 5){
-            if (row == 5){
-                ROW1 = 0;
-                ROW2 = 0;
-                ROW3 = 0;
-                ROW4 = 0;
-                if (COL1==0&&COL2==0){
-                    col = 0;
-                } else if (COL1==0&&COL3==0){
-                    col = 0;
-                } else if (COL2==0&&COL3==0){
-                    col = 0;
-                }
-                while( COL1==0&&COL2==0&&COL3==0);
-            } else if (row == 1){
-                ROW2 = 1;
-                ROW3 = 1;
-                ROW4 = 1;
-                ROW1 = 0;
-                 if (!COL1&&COL2&&COL3){
-                    col = 1;
-                } else if (COL1&&!COL2&&COL3) {
-                    col = 2;
-                } else if (COL1&&COL2&&!COL3) {
-                    col = 3;
-                }
-            } else if (row == 2){
-                ROW1 = 1;
-                ROW3 = 1;
-                ROW4 = 1;
-                ROW2 = 0;
-                if (!COL1&&COL2&&COL3){
-                    col = 1;
-                } else if (COL1&&!COL2&&COL3) {
-                    col = 2;
-                } else if (COL1&&COL2&&!COL3) {
-                    col = 3;
-                }
-            } else if (row == 3){
-                ROW1 = 1;
-                ROW2 = 1;
-                ROW4 = 1;
-                ROW3 = 0;
-                 if (!COL1&&COL2&&COL3){
-                    col = 1;
-                } else if (COL1&&!COL2&&COL3) {
-                    col = 2;
-                } else if (COL1&&COL2&&!COL3) {
-                    col = 3;
-                }
-            } else if (row == 4) {
-                ROW1 = 1;
-                ROW2 = 1;
-                ROW3 = 1;
-                ROW4 = 0;
-                if (!COL1&&COL2&&COL3){
-                    col = 1;
-                } else if (COL1&&!COL2&&COL3) {
-                    col = 2;
-                } else if (COL1&&COL2&&!COL3) {
-                    col = 3;
-                }
-            }
-            row++;
+        ROW1 = LOW;
+        if (COL1 == LOW){
+            key = '1'; count++;
+        } if (COL2 == LOW) {
+            key = '2'; count++;
+        } if (COL3 == LOW){
+            key = '3'; count++;
         }
-
-        ROW1 = 0;
-        ROW2 = 0;
-        ROW3 = 0;
-        ROW4 = 0;
-
-        if (col != 0){
-            if (row = 4){
-                if (col = 1){
-                    key = '*';
-                }else if (col == 2){
-                    key = '0';
-                } else if (col == 3){
-                    key = '#';
-                } else {
-                    return -1;
-                }
-            } else {
-                key = '1'+col-1+(row*3);
-            }
+       
+        if (count == 1){
+            return key;
+        }else {
+            return -1;
         }
-	
-	
-
-       	return key;
 }
 
 // ******************************************************************************************* //
