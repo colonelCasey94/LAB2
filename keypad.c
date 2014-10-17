@@ -7,8 +7,9 @@
 // ******************************************************************************************* //
 
 // set up conections for inverse multiplexing
-#define ROW1 LATBbits.LATB11
-#define ROW2 LATBbits.LATB10
+#define ROW LATB
+#define ROW1 LATBbits.LATB0
+#define ROW2 LATBbits.LATB1
 #define ROW3 LATBbits.LATB2
 #define ROW4 LATBbits.LATB3
 
@@ -17,8 +18,8 @@
 #define COL3 PORTBbits.RB5
 
 // TRIS Register mapping for the keypad signals
-#define TRIS_ROW1 TRISBbits.TRISB11
-#define TRIS_ROW2 TRISBbits.TRISB10
+#define TRIS_ROW1 TRISBbits.TRISB0
+#define TRIS_ROW2 TRISBbits.TRISB1
 #define TRIS_ROW3 TRISBbits.TRISB2
 #define TRIS_ROW4 TRISBbits.TRISB3
 
@@ -71,10 +72,7 @@ void KeypadInitialize() {
     IEC1bits.CNIE = 1;
 
 
-        ROW1 = LOW;
-        ROW2 = LOW;
-        ROW3 = LOW;
-        ROW4 = LOW;
+    ROW = ROW & 0xFFF0;
 }
 
 // ******************************************************************************************* //
@@ -103,35 +101,32 @@ char KeypadScan() {
 
 
 
-        ROW1 = LOW;
-        ROW2 = HIGH;
-        ROW3 = HIGH;
-        ROW4 = HIGH;
-        DelayUs(250);
+        ROW = ROW | 0x000F;
+        DelayUs(50);
+        ROW = ROW & 0xFFFE;
+        DelayUs(50);
         if (COL1 == LOW) {key = '1'; count++; }
         if (COL2 == LOW) {key = '2'; count++; }
-        if (COL3 == LOW) {key = '3'; count++; }
+        if (COL3 == LOW) {key = '3'; count++; while(COL3 == LOW); }
 //        printf("state 0             %c\n", key);
 
 
 
-        ROW1 = HIGH;
-        ROW2 = LOW;
-        ROW3 = HIGH;
-        ROW4 = HIGH;
-        DelayUs(250);
-        if (COL1 == LOW) {key = '4'; count++; }
+        ROW = ROW | 0x000F;
+        DelayUs(50);
+        ROW = ROW & 0xFFFD;
+        DelayUs(50);
+        if (COL1 == LOW) {key = '4'; count++; while(COL1 == LOW); }
         if (COL2 == LOW) {key = '5'; count++; }
         if (COL3 == LOW) {key = '6'; count++; }
 //        printf("state 1                 %c\n", key);
 
 
 
-        ROW1 = HIGH;
-        ROW2 = HIGH;
-        ROW3 = LOW;
-        ROW4 = HIGH;
-        DelayUs(250);
+        ROW = ROW | 0x000F;
+        DelayUs(50);
+        ROW = ROW & 0xFFFB;
+        DelayUs(50);
         if (COL1 == LOW) {key = '7'; count++; }
         if (COL2 == LOW) {key = '8'; count++; }
         if (COL3 == LOW) {key = '9'; count++; }
@@ -139,11 +134,10 @@ char KeypadScan() {
 
 
 
-        ROW1 = HIGH;
-        ROW2 = HIGH;
-        ROW3 = HIGH;
-        ROW4 = LOW;
-        DelayUs(250);
+        ROW = ROW | 0x000F;
+        DelayUs(50);
+        ROW = ROW & 0xFFF7;
+        DelayUs(50);
         if (COL1 == LOW) {key = '*'; count++; }
         if (COL2 == LOW) {key = '0'; count++; }
         if (COL3 == LOW) {key = '#'; count++; }
@@ -151,10 +145,7 @@ char KeypadScan() {
 
 
 
-        ROW1 = LOW;
-        ROW2 = LOW;
-        ROW3 = LOW;
-        ROW4 = LOW;
+        ROW = ROW & 0xFFF0;
 
    while ( COL1 == LOW || COL2 == LOW || COL3 == LOW);
         if(COL1 == HIGH && COL2 == HIGH && COL3 == HIGH){
