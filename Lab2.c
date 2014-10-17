@@ -68,20 +68,18 @@ int main(void)
         // Set Timer 1's period value regsiter to value for 1s.
         //14745600/8 = 1843200
         //1 s * 57600 = 1843200
-        PR4 = 0x10;
-        PR5 = 0x0;
+        PR4 = 0x4000;
+        PR5 = 0x38;
         // Setup Timer 4: Timer 5 in 32 but mode control register (T4CON) to:
  	//     TON           = 0     (start timer)
 	//     TCKPS1:TCKPS2 = 01    (set timer prescaler to 1:8)
 	//     TCS           = 0     (Fosc/2)
         T4CONbits.T32 = 1;
         T4CONbits.TCKPS0 = 1;
-        T4CONbits.TCKPS1 = 1;
+        T4CONbits.TCKPS1 = 0;
         T4CONbits.TCS = 0;
-        T4CONbits.TON = 1;
 
         IFS1bits.T5IF = 0;
-//        IEC1bits.T5IE = 1;
 
 
 
@@ -103,6 +101,12 @@ int main(void)
         password[0][1] = '2';
         password[0][2] = '3';
         password[0][3] = '4';
+
+        for(mem_position = 1; mem_position < 100; mem_position++){
+            for(pass_iterator = 0; pass_iterator < 4; pass_iterator++){
+                password[mem_position][pass_iterator] = NULL;
+            }
+        }
 
         entered_pass[0] = NULL;
         entered_pass[1] = NULL;
@@ -129,11 +133,7 @@ int main(void)
                     if (scanKeypad == 1){
                         scanKeypad = 0;
                         state = PRINT;
-                    } else if (pass_position == 5){
-                        pass_position = 0;
-                        state = CHECK;
-                    }
-
+                    } 
                     break;
                 case PRINT:
 
@@ -145,11 +145,22 @@ int main(void)
                         state = BAD;
                     } else if (key == '*' && pass_position > 0 && entered_pass[0] == '*') {
                         state = PROGRAM;
-                    } else if ( key != -1){
 
+                        entered_pass[0] = NULL;
+                        entered_pass[1] = NULL;
+                        entered_pass[2] = NULL;
+                        entered_pass[3] = NULL;
+                        entered_pass[4] = NULL;
+                        pass_position = 0;
+
+                    } else if ( key != -1){
                         entered_pass[pass_position] = key;
                         pass_position++;
-                        state = ENTER;
+                        if(pass_position == 4){
+                            state = CHECK;
+                        } else {
+                            state = ENTER;
+                        }
                     }
                     LCDMoveCursor(1,0);
                     for(pass_iterator = 0; entered_pass[pass_iterator] != NULL && pass_iterator <4; pass_iterator++){
@@ -163,12 +174,19 @@ int main(void)
                     LCDPrintString("BAD");
                     TMR4 = 0;
                     TMR5 = 0;
-//                    T4CONbits.TON = 1;
+                    T4CONbits.TON = 1;
 //
                     while(IFS1bits.T5IF == 0);
                     IFS1bits.T5IF = 0;
-//                    clock_time = 0;
-//                    T4CONbits.TON = 0;
+                    T4CONbits.TON = 0;
+
+                    entered_pass[0] = NULL;
+                    entered_pass[1] = NULL;
+                    entered_pass[2] = NULL;
+                    entered_pass[3] = NULL;
+                    entered_pass[4] = NULL;
+                    pass_position = 0;
+        
                     state = ENTER;
                     break;
                 case GOOD:
@@ -177,26 +195,31 @@ int main(void)
                     LCDPrintString("Good");
                     TMR4 = 0;
                     TMR5 = 0;
+                     T4CONbits.TON = 1;
+//
                     while(IFS1bits.T5IF == 0);
                     IFS1bits.T5IF = 0;
+                    T4CONbits.TON = 0;
+
+                    entered_pass[0] = NULL;
+                    entered_pass[1] = NULL;
+                    entered_pass[2] = NULL;
+                    entered_pass[3] = NULL;
+                    entered_pass[4] = NULL;
+                    pass_position = 0;
+        
                     state = ENTER;
                     break;
                 case CHECK:
                     state = BAD;
-                    while(password[mem_position][0] != NULL){
-                        if(password[mem_position][0] == entered_pass[0] && password[mem_position][1] == entered_pass[1] && password[mem_position][2] == entered_pass[2] && password[mem_position][3] == entered_pass[3]){
+                    for (mem_position = 0; mem_position < 100; mem_position++){
+                        if (password[mem_position][0] == entered_pass[0] && password[mem_position][1] == entered_pass[1] && password[mem_position][2] == entered_pass[2] && password[mem_position][3] == entered_pass[3] ){
                             state = GOOD;
-                            entered_pass[0] = NULL;
-                            entered_pass[1] = NULL;
-                            entered_pass[2] = NULL;
-                            entered_pass[3] = NULL;
                         }
-                        mem_position++;
                     }
-                    mem_position = 0;
                     break;
                 case PROGRAM:
-                    LCDClear();
+                    LCDClear();        
                     LCDMoveCursor(0,0);
                     LCDPrintString("Set Mode");
                     program = 1;
@@ -216,6 +239,7 @@ int main(void)
                         }
                         else{
                             state = VALID;
+                            mem_position = 0;
                             while(password[mem_position][0] != NULL){
                                 mem_position++;
                             }
@@ -253,8 +277,19 @@ int main(void)
                     LCDPrintString("Valid");
                     TMR4 = 0;
                     TMR5 = 0;
+                    T4CONbits.TON = 1;
+//
                     while(IFS1bits.T5IF == 0);
                     IFS1bits.T5IF = 0;
+                    T4CONbits.TON = 0;
+
+                    entered_pass[0] = NULL;
+                    entered_pass[1] = NULL;
+                    entered_pass[2] = NULL;
+                    entered_pass[3] = NULL;
+                    entered_pass[4] = NULL;
+                    pass_position = 0;
+
                     state = ENTER;
                     break;
                 case INVALID:
@@ -263,8 +298,19 @@ int main(void)
                     LCDPrintString("Invalid");
                     TMR4 = 0;
                     TMR5 = 0;
+                    T4CONbits.TON = 1;
+//
                     while(IFS1bits.T5IF == 0);
                     IFS1bits.T5IF = 0;
+                    T4CONbits.TON = 0;
+
+                    entered_pass[0] = NULL;
+                    entered_pass[1] = NULL;
+                    entered_pass[2] = NULL;
+                    entered_pass[3] = NULL;
+                    entered_pass[4] = NULL;
+                    pass_position = 0;
+                    
                     state = ENTER;
                     break;
 		}
