@@ -156,6 +156,7 @@ char KeypadScan() {
         ROW3 = LOW;
         ROW4 = LOW;
 
+   while ( COL1 == LOW || COL2 == LOW || COL3 == LOW);
         if(COL1 == HIGH && COL2 == HIGH && COL3 == HIGH){
             if (count == 1){
                 return key;
