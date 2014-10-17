@@ -39,15 +39,15 @@ _CONFIG2( IESO_OFF & SOSCSEL_SOSC & WUTSEL_LEG & FNOSC_PRIPLL & FCKSM_CSDCMD & O
 // and the KeypadScan() function needs to be called.
 
 volatile char scanKeypad;
-volatile int clock_time;
-
+volatile int clock_time=0;
+enum state_t {ENTER, PRINT, CHECK, GOOD, BAD, PROGRAM, VALID, INVALID, PRINT2  } state;
 // ******************************************************************************************* //
 
 int main(void)
 {
 
         char key;
-        int state = 0;
+
 
 	// TODO: Initialize and configure IOs, LCD (using your code from Lab 1),
 	// UART (if desired for debugging), and any other configurations that are needed.
@@ -64,18 +64,24 @@ int main(void)
 
 
 
-        TMR1 = 0;
+        TMR4 = 0; TMR5 = 0;
         // Set Timer 1's period value regsiter to value for 1s.
-        //14745600/256 = 57600
-        //1 s * 57600 = 57600
-        PR1 = 57600;
-        // Setup Timer 1 control register (T1CON) to:
+        //14745600/8 = 1843200
+        //1 s * 57600 = 1843200
+        PR4 = 0x10;
+        PR5 = 0x0;
+        // Setup Timer 4: Timer 5 in 32 but mode control register (T4CON) to:
  	//     TON           = 0     (start timer)
-	//     TCKPS1:TCKPS2 = 11    (set timer prescaler to 1:256)
+	//     TCKPS1:TCKPS2 = 01    (set timer prescaler to 1:8)
 	//     TCS           = 0     (Fosc/2)
-	T1CON = 0x8030;
-        IFS0bits.T1IF = 0;
-        IEC0bits.T1IE = 1;
+        T4CONbits.T32 = 1;
+        T4CONbits.TCKPS0 = 1;
+        T4CONbits.TCKPS1 = 1;
+        T4CONbits.TCS = 0;
+        T4CONbits.TON = 1;
+
+        IFS1bits.T5IF = 0;
+//        IEC1bits.T5IE = 1;
 
 
 
@@ -86,8 +92,9 @@ int main(void)
         scanKeypad = 0;
 
         char password[100][4];
-        char entered_pass[6];
+        char entered_pass[5];
         int pass_position = 0;
+        int pass_iterator = 0;
         int mem_position = 0;
         int time = 0;
         int program = 0;
@@ -107,189 +114,159 @@ int main(void)
 
         printf("working\n)");
 
-
+        state = ENTER;
 	while(1)
 	{
 		// TODO: Once you create the correct keypad driver (Part 1 of the lab assignment), write
 		// the C program that use both the keypad and LCD drivers to implement the 4-digit password system.
 
             switch(state){
-                    case 0:
-                        printf("State 0\n");
-                        LCDMoveCursor(0,0);
-                        LCDPrintString("Enter");
+                case ENTER:
 
-                        if(scanKeypad == 1){
-                            state = 1;
+                    LCDMoveCursor(0,0);
+                    LCDPrintString("ENTER");
+
+                    if (scanKeypad == 1){
+                        scanKeypad = 0;
+                        state = PRINT;
+                    } else if (pass_position == 5){
+                        pass_position = 0;
+                        state = CHECK;
+                    }
+
+                    break;
+                case PRINT:
+
+                    key = KeypadScan();
+
+                    if (key == '#'){
+                        state = BAD;
+                    } else if (key == '*' && pass_position > 0 && entered_pass[0] != '*'){
+                        state = BAD;
+                    } else if (key == '*' && pass_position > 0 && entered_pass[0] == '*') {
+                        state = PROGRAM;
+                    } else if ( key != -1){
+
+                        entered_pass[pass_position] = key;
+                        pass_position++;
+                        state = ENTER;
+                    }
+                    LCDMoveCursor(1,0);
+                    for(pass_iterator = 0; entered_pass[pass_iterator] != NULL && pass_iterator <4; pass_iterator++){
+                        LCDPrintChar(entered_pass[pass_iterator]);
+                    }
+
+                    break;
+                case BAD:
+                    LCDClear();
+                    LCDMoveCursor(0,0);
+                    LCDPrintString("BAD");
+                    TMR4 = 0;
+                    TMR5 = 0;
+//                    T4CONbits.TON = 1;
+//
+                    while(IFS1bits.T5IF == 0);
+                    IFS1bits.T5IF = 0;
+//                    clock_time = 0;
+//                    T4CONbits.TON = 0;
+                    state = ENTER;
+                    break;
+                case GOOD:
+                    LCDClear();
+                    LCDMoveCursor(0,0);
+                    LCDPrintString("Good");
+                    TMR4 = 0;
+                    TMR5 = 0;
+                    while(IFS1bits.T5IF == 0);
+                    IFS1bits.T5IF = 0;
+                    state = ENTER;
+                    break;
+                case CHECK:
+                    state = BAD;
+                    while(password[mem_position][0] != NULL){
+                        if(password[mem_position][0] == entered_pass[0] && password[mem_position][1] == entered_pass[1] && password[mem_position][2] == entered_pass[2] && password[mem_position][3] == entered_pass[3]){
+                            state = GOOD;
+                            entered_pass[0] = NULL;
+                            entered_pass[1] = NULL;
+                            entered_pass[2] = NULL;
+                            entered_pass[3] = NULL;
                         }
+                        mem_position++;
+                    }
+                    mem_position = 0;
+                    break;
+                case PROGRAM:
+                    LCDClear();
+                    LCDMoveCursor(0,0);
+                    LCDPrintString("Set Mode");
+                    program = 1;
+                    if(scanKeypad == 1){
+                        state = PRINT2;
+                    }
 
-                        if(entered_pass[0] == '*' && entered_pass[1] == '*'){ // program mode   state 4
-                            state = 4;
-                            entered_pass[0] = NULL; // clear password
+                    if(entered_pass[4] != NULL){
+                        if(entered_pass[4] != '#'){
+                            state = INVALID;
+                        }
+                        else if(entered_pass[0] == '*' || entered_pass[1] == '*' || entered_pass[2] == '*' || entered_pass[3] == '*'){
+                            state = INVALID;
+                        }
+                        else if(entered_pass[0] == '#' || entered_pass[1] == '#' || entered_pass[2] == '#' || entered_pass[3] == '#'){
+                            state = INVALID;
+                        }
+                        else{
+                            state = VALID;
+                            while(password[mem_position][0] != NULL){
+                                mem_position++;
+                            }
+                            password[mem_position][0] = entered_pass[0];
+                            password[mem_position][1] = entered_pass[1];
+                            password[mem_position][2] = entered_pass[2];
+                            password[mem_position][3] = entered_pass[3];
+                            entered_pass[0] = NULL;
                             entered_pass[1] = NULL;
                             entered_pass[2] = NULL;
                             entered_pass[3] = NULL;
                             entered_pass[4] = NULL;
-
+                            mem_position = 0;
                         }
-                        else if(entered_pass[0] != '*' && entered_pass[1] == '*'){ //bad mode
-                            state = 2;
+                    }
+                    break;
+                case PRINT2:
+                    key = KeypadScan();
+                    if ( key != -1){
+                        entered_pass[pass_position] = key;
+                        pass_position++;
+                        if(pass_position == 5){
+                            pass_position = 0;
                         }
-                        else if(entered_pass[0] == '*' && entered_pass[1] != '*'){ // bad mode
-                            state = 2;
-                        }
-                        else if(entered_pass[0] == '#' || entered_pass[1] == '#' || entered_pass[2] == '#' || entered_pass[3] == '#' || entered_pass[2] == '*' || entered_pass[3] == '*'){ // bad mode
-                            state = 2;
-                        }
-                        else if(entered_pass[3] != 'NULL'){ // check password  determine if good or bad
-                            while(password[mem_position][0] != 'NULL'){
-                                if(password[mem_position][0] == entered_pass[0] && password[mem_position][1] == entered_pass[1] && password[mem_position][2] == entered_pass[2] && password[mem_position][3] == entered_pass[3]){
-                                    state = 3;
-                                }
-                                     mem_position++; // increase memory location for the next char entered
-                            }
-                            if(state != 3){ // if the password was not valid
-                                state = 2;
-                            }
-
-                            mem_position = 0; //rest position in memory
-
-                            entered_pass[0] = NULL; // clear password
-                            entered_pass[1] = NULL;
-                            entered_pass[2] = NULL;
-                            entered_pass[3] = NULL;
-                            entered_pass[4] = NULL;
-                        }
-                        break;
-
-//                    case 1:
-//                        printf("State 1\n");
-//                        key = KeypadScan();  // scan for the key being pressed
-//                        if(key != -1){ // if not error
-//                            LCDMoveCursor(1,(pass_position)); // set lcd position for the correct digit
-//                            LCDPrintChar(key);
-//                            entered_pass[pass_position] = key; // save entered password into the memory to check later
-//                            pass_position++;
-//                            if(pass_position == 4){
-//                                pass_position = 0;
-//                            }
-//                        }
-//
-//                        scanKeypad = 0; // set low for next interrupt
-//                        if(program == 0){
-//                            state = 0; // go back to state 0
-//                        }
-//                        else if(program == 1){
-//                            state = 4; // go back to the program state (state 4)
-//                        }
-//
-//                        break;
-
-//                     case 2: // bad state
-//                         printf("State 2\n");
-//                         LCDClear();
-//                         LCDMoveCursor(0,0);
-//                         LCDPrintString("Bad");
-//
-//                         clock_time = 0;
-//
-//                         while(time < 2){
-//                             time = clock_time;
-//                         }
-//                         state = 0;
-//                         time = 0;
-//                         break;
-//
-//                    case 3:  // good state
-//                        printf("State 3\n");
-//                        LCDClear();
-//                        LCDMoveCursor(0,0);
-//                        LCDPrintString("Good :)");
-//
-//                        clock_time = 0;
-//
-//                        while(time < 2){
-//                            time = clock_time;
-//                        }
-//                        state = 0;
-//                        time = 0;
-//                        break;
-//
-//                    case 4: // program state
-//                        printf("State 4\n");
-//                        program = 1;
-//                        if(scanKeypad == 1){
-//                            state = 1;
-//                        }
-//
-//                        if(entered_pass[4] == '#'){ // enter new password into the password memory array
-//                            if(entered_pass[0] != '*' && entered_pass[1] != '*' && entered_pass[2] != '*' && entered_pass[3] != '*' && entered_pass[0] != '#' && entered_pass[1] != '#' && entered_pass[2] != '#' && entered_pass[3] != '#'){
-//                                while(password[mem_position][0] != 'NULL'){
-//                                    mem_position++;
-//                                 }
-//
-//                                password[mem_position][0] = entered_pass[0];
-//                                password[mem_position][1] = entered_pass[1];
-//                                password[mem_position][2] = entered_pass[2];
-//                                password[mem_position][3] = entered_pass[3];
-//
-//                                mem_position = 0;
-//                                program = 0;
-//                                state = 5;
-//                            }
-//                            else
-//                                state = 6;
-//                        }
-//
-//                        break;
-//                    case 5:
-//                        printf("State 5\n");
-//                        LCDClear();
-//                        LCDMoveCursor(0,0);
-//                        LCDPrintString("Valid :)");
-//
-//                        clock_time = 0;
-//
-//                        while(time < 2){
-//                            time = clock_time;
-//                        }
-//                        state = 0;
-//                        time = 0;
-//
-//                        break;
-//
-//                     case 6:
-//                         printf("State 6\n");
-//                        LCDClear();
-//                        LCDMoveCursor(0,0);
-//                        LCDPrintString("Invalid");
-//
-//                        clock_time = 0;
-//
-//                        while(time < 2){
-//                            time = clock_time;
-//                        }
-//                        state = 0;
-//                        time = 0;
-//
-//                        break;
-//
-//                     default:
-//                         LCDClear();
-//                         LCDMoveCursor(0,0);
-//                         LCDPrintString("Error");
-//
-//                         break;
-//            }
-
-//		if( scanKeypad == 1 ) {
-////                    printf("%c   %c", key, KeypadScan());
-//			key = KeypadScan();
-//
-//			if( key != -1 ) {
-//                            printf("%c\n", key);
-//			}
-//			scanKeypad = 0;
+                        state = PROGRAM;
+                    }
+                    LCDMoveCursor(1,0);
+                    for(pass_iterator = 0; entered_pass[pass_iterator] != NULL && pass_iterator <4; pass_iterator++){
+                        LCDPrintChar(entered_pass[pass_iterator]);
+                    }
+                    break;
+                case VALID:
+                    LCDClear();
+                    LCDMoveCursor(0,0);
+                    LCDPrintString("Valid");
+                    TMR4 = 0;
+                    TMR5 = 0;
+                    while(IFS1bits.T5IF == 0);
+                    IFS1bits.T5IF = 0;
+                    state = ENTER;
+                    break;
+                case INVALID:
+                    LCDClear();
+                    LCDMoveCursor(0,0);
+                    LCDPrintString("Invalid");
+                    TMR4 = 0;
+                    TMR5 = 0;
+                    while(IFS1bits.T5IF == 0);
+                    IFS1bits.T5IF = 0;
+                    state = ENTER;
+                    break;
 		}
 	}
 	return 0;
@@ -320,12 +297,12 @@ void __attribute__((interrupt)) _CNInterrupt(void)
 }
 
 // ******************************************************************************************* //
-void __attribute__((interrupt,auto_psv)) _T1Interrupt(void)
-{
-	// Clear Timer 1 interrupt flag to allow another Timer 1 interrupt to occur.
-	IFS0bits.T1IF = 0;
-
-        clock_time = clock_time + 1;
-
-
-}
+//void __attribute__((interrupt)) _T5nterrupt(void)
+//{
+//	// Clear Timer 1 interrupt flag to allow another Timer 1 interrupt to occur.
+//	IFS1bits.T5IF = 0;
+//
+//   //     clock_time = clock_time + 1;
+//
+//        clock_time = 1;
+//}
