@@ -40,14 +40,14 @@ _CONFIG2( IESO_OFF & SOSCSEL_SOSC & WUTSEL_LEG & FNOSC_PRIPLL & FCKSM_CSDCMD & O
 
 volatile char scanKeypad;
 volatile int clock_time=0;
-enum state_t {ENTER, PRINT, CHECK, GOOD, BAD, PROGRAM, VALID, INVALID,  } state;
+enum state_t {ENTER, PRINT, CHECK, GOOD, BAD, PROGRAM, VALID, INVALID, PRINT2  } state;
 // ******************************************************************************************* //
 
 int main(void)
 {
 
         char key;
-       
+
 
 	// TODO: Initialize and configure IOs, LCD (using your code from Lab 1),
 	// UART (if desired for debugging), and any other configurations that are needed.
@@ -64,23 +64,23 @@ int main(void)
 
 
 
-//        TMR4 = 0; TMR5 = 0;
-//        // Set Timer 1's period value regsiter to value for 1s.
-//        //14745600/8 = 1843200
-//        //1 s * 57600 = 1843200
-//        PR4 = 0x10;
-//        PR5 = 0x0;
-//        // Setup Timer 4: Timer 5 in 32 but mode control register (T4CON) to:
-// 	//     TON           = 0     (start timer)
-//	//     TCKPS1:TCKPS2 = 01    (set timer prescaler to 1:8)
-//	//     TCS           = 0     (Fosc/2)
-//        T4CONbits.T32 = 1;
-//        T4CONbits.TCKPS0 = 1;
-//        T4CONbits.TCKPS1 = 1;
-//        T4CONbits.TCS = 0;
-//        T4CONbits.TON = 1;
-//
-//        IFS1bits.T5IF = 0;
+        TMR4 = 0; TMR5 = 0;
+        // Set Timer 1's period value regsiter to value for 1s.
+        //14745600/8 = 1843200
+        //1 s * 57600 = 1843200
+        PR4 = 0x10;
+        PR5 = 0x0;
+        // Setup Timer 4: Timer 5 in 32 but mode control register (T4CON) to:
+ 	//     TON           = 0     (start timer)
+	//     TCKPS1:TCKPS2 = 01    (set timer prescaler to 1:8)
+	//     TCS           = 0     (Fosc/2)
+        T4CONbits.T32 = 1;
+        T4CONbits.TCKPS0 = 1;
+        T4CONbits.TCKPS1 = 1;
+        T4CONbits.TCS = 0;
+        T4CONbits.TON = 1;
+
+        IFS1bits.T5IF = 0;
 //        IEC1bits.T5IE = 1;
 
 
@@ -149,29 +149,123 @@ int main(void)
 
                         entered_pass[pass_position] = key;
                         pass_position++;
-
                         state = ENTER;
                     }
                     LCDMoveCursor(1,0);
                     for(pass_iterator = 0; entered_pass[pass_iterator] != NULL && pass_iterator <4; pass_iterator++){
                         LCDPrintChar(entered_pass[pass_iterator]);
                     }
-                    
+
                     break;
                 case BAD:
                     LCDClear();
                     LCDMoveCursor(0,0);
                     LCDPrintString("BAD");
-//                    TMR4 = 0;
-//                    TMR5 = 0;
+                    TMR4 = 0;
+                    TMR5 = 0;
 //                    T4CONbits.TON = 1;
 //
-//                    while(clock_time == 0);
+                    while(IFS1bits.T5IF == 0);
+                    IFS1bits.T5IF = 0;
 //                    clock_time = 0;
 //                    T4CONbits.TON = 0;
                     state = ENTER;
                     break;
                 case GOOD:
+                    LCDClear();
+                    LCDMoveCursor(0,0);
+                    LCDPrintString("Good");
+                    TMR4 = 0;
+                    TMR5 = 0;
+                    while(IFS1bits.T5IF == 0);
+                    IFS1bits.T5IF = 0;
+                    state = ENTER;
+                    break;
+                case CHECK:
+                    state = BAD;
+                    while(password[mem_position][0] != NULL){
+                        if(password[mem_position][0] == entered_pass[0] && password[mem_position][1] == entered_pass[1] && password[mem_position][2] == entered_pass[2] && password[mem_position][3] == entered_pass[3]){
+                            state = GOOD;
+                            entered_pass[0] = NULL;
+                            entered_pass[1] = NULL;
+                            entered_pass[2] = NULL;
+                            entered_pass[3] = NULL;
+                        }
+                        mem_position++;
+                    }
+                    mem_position = 0;
+                    break;
+                case PROGRAM:
+                    LCDClear();
+                    LCDMoveCursor(0,0);
+                    LCDPrintString("Set Mode");
+                    program = 1;
+                    if(scanKeypad == 1){
+                        state = PRINT2;
+                    }
+
+                    if(entered_pass[4] != NULL){
+                        if(entered_pass[4] != '#'){
+                            state = INVALID;
+                        }
+                        else if(entered_pass[0] == '*' || entered_pass[1] == '*' || entered_pass[2] == '*' || entered_pass[3] == '*'){
+                            state = INVALID;
+                        }
+                        else if(entered_pass[0] == '#' || entered_pass[1] == '#' || entered_pass[2] == '#' || entered_pass[3] == '#'){
+                            state = INVALID;
+                        }
+                        else{
+                            state = VALID;
+                            while(password[mem_position][0] != NULL){
+                                mem_position++;
+                            }
+                            password[mem_position][0] = entered_pass[0];
+                            password[mem_position][1] = entered_pass[1];
+                            password[mem_position][2] = entered_pass[2];
+                            password[mem_position][3] = entered_pass[3];
+                            entered_pass[0] = NULL;
+                            entered_pass[1] = NULL;
+                            entered_pass[2] = NULL;
+                            entered_pass[3] = NULL;
+                            entered_pass[4] = NULL;
+                            mem_position = 0;
+                        }
+                    }
+                    break;
+                case PRINT2:
+                    key = KeypadScan();
+                    if ( key != -1){
+                        entered_pass[pass_position] = key;
+                        pass_position++;
+                        if(pass_position == 5){
+                            pass_position = 0;
+                        }
+                        state = PROGRAM;
+                    }
+                    LCDMoveCursor(1,0);
+                    for(pass_iterator = 0; entered_pass[pass_iterator] != NULL && pass_iterator <4; pass_iterator++){
+                        LCDPrintChar(entered_pass[pass_iterator]);
+                    }
+                    break;
+                case VALID:
+                    LCDClear();
+                    LCDMoveCursor(0,0);
+                    LCDPrintString("Valid");
+                    TMR4 = 0;
+                    TMR5 = 0;
+                    while(IFS1bits.T5IF == 0);
+                    IFS1bits.T5IF = 0;
+                    state = ENTER;
+                    break;
+                case INVALID:
+                    LCDClear();
+                    LCDMoveCursor(0,0);
+                    LCDPrintString("Invalid");
+                    TMR4 = 0;
+                    TMR5 = 0;
+                    while(IFS1bits.T5IF == 0);
+                    IFS1bits.T5IF = 0;
+                    state = ENTER;
                     break;
 		}
 	}
