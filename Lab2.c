@@ -40,6 +40,7 @@ _CONFIG2( IESO_OFF & SOSCSEL_SOSC & WUTSEL_LEG & FNOSC_PRIPLL & FCKSM_CSDCMD & O
 
 volatile char scanKeypad;
 volatile int clock_time=0;
+volatile int program = 1;
 enum state_t {ENTER, PRINT, CHECK, GOOD, BAD, PROGRAM, VALID, INVALID, PRINT2  } state;
 // ******************************************************************************************* //
 
@@ -95,7 +96,6 @@ int main(void)
         int pass_iterator = 0;
         int mem_position = 0;
         int time = 0;
-        int program = 0;
 
         password[0][0] = '1';  //default password
         password[0][1] = '2';
@@ -138,14 +138,14 @@ int main(void)
                 case PRINT:
 
                     key = KeypadScan();
-
+                    scanKeypad = 0;
                     if (key == '#'){
                         state = BAD;
                     } else if (key == '*' && pass_position > 0 && entered_pass[0] != '*'){
                         state = BAD;
                     } else if (key == '*' && pass_position > 0 && entered_pass[0] == '*') {
                         state = PROGRAM;
-
+                        LCDClear();
                         entered_pass[0] = NULL;
                         entered_pass[1] = NULL;
                         entered_pass[2] = NULL;
@@ -171,6 +171,7 @@ int main(void)
 
                     break;
                 case BAD:
+                    program = 0;
                     LCDClear();
                     LCDMoveCursor(0,0);
                     LCDPrintString("BAD");
@@ -189,9 +190,11 @@ int main(void)
                     entered_pass[4] = NULL;
                     pass_position = 0;
 
+                    program = 1;
                     state = ENTER;
                     break;
                 case GOOD:
+                    program = 0;
                     LCDClear();
                     LCDMoveCursor(0,0);
                     LCDPrintString("Good");
@@ -210,6 +213,7 @@ int main(void)
                     entered_pass[4] = NULL;
                     pass_position = 0;
 
+                    program = 1;
                     state = ENTER;
                     break;
                 case CHECK:
@@ -221,10 +225,10 @@ int main(void)
                     }
                     break;
                 case PROGRAM:
-                    LCDClear();
+                   // LCDClear();
                     LCDMoveCursor(0,0);
                     LCDPrintString("Set Mode");
-                    program = 1;
+                    program == 0;
                     if(scanKeypad == 1){
                         state = PRINT2;
                     }
@@ -267,6 +271,7 @@ int main(void)
                             pass_position = 0;
                         }
                         state = PROGRAM;
+                        program = 1;
                     }
                     LCDMoveCursor(1,0);
                     for(pass_iterator = 0; entered_pass[pass_iterator] != NULL && pass_iterator <4; pass_iterator++){
@@ -274,6 +279,7 @@ int main(void)
                     }
                     break;
                 case VALID:
+                    program = 0;
                     LCDClear();
                     LCDMoveCursor(0,0);
                     LCDPrintString("Valid");
@@ -292,9 +298,11 @@ int main(void)
                     entered_pass[4] = NULL;
                     pass_position = 0;
 
+                    program = 1;
                     state = ENTER;
                     break;
                 case INVALID:
+                    program = 0;
                     LCDClear();
                     LCDMoveCursor(0,0);
                     LCDPrintString("Invalid");
@@ -313,6 +321,7 @@ int main(void)
                     entered_pass[4] = NULL;
                     pass_position = 0;
 
+                    program = 1;
                     state = ENTER;
                     break;
 		}
@@ -336,12 +345,13 @@ void __attribute__((interrupt)) _CNInterrupt(void)
 {
 	// TODO: Clear interrupt flag
 	IFS1bits.CNIF = 0;
-
+//        scanKeypad = 0;
 	// TODO: Detect if *any* key of the keypad is *pressed*, and update scanKeypad
 //	 variable to indicate keypad scanning process must be executed.
-       if( PORTAbits.RA0 == 0 || PORTAbits.RA1 == 0 || PORTBbits.RB5 == 0 ){
+       if( (PORTAbits.RA0 == 0 || PORTAbits.RA1 == 0 || PORTBbits.RB5 == 0) && program == 1){
            scanKeypad = 1;
        }
+
 }
 
 // ******************************************************************************************* //
